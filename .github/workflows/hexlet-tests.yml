@@ -1,0 +1,25 @@
+name: make-test
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: make-install
+        run: |
+             curl -sSL https://install.python-poetry.org | python3 - --version 1.2.0
+             make install
+      - name: make-lint
+        run: |
+             make lint
+      - name: make-test
+        run: |
+             make test
+      - name: Test & publish code coverage
+        uses: paambaati/codeclimate-action@v3.0.0
+        env:
+          CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
+        with:
+          coverageCommand: make test-coverage
+          debug: true
