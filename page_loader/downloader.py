@@ -20,4 +20,3 @@ def download(url, path=os.getcwd(), client=requests):
     with open(file_path, 'w') as f:
         f.write(content)
     return file_path
-
