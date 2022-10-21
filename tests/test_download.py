@@ -9,7 +9,7 @@ def test_download():
         with requests_mock.Mocker() as mock:
             mock.get(url, text='data')
             excepted = f'{tempdir}/ru-hexlet-io-courses.html'
-            file_path = download(url, path=tempdir)
+            file_path = download(url, tempdir)
             with open(file_path) as output:
                 expected_content = output.read()
                 assert expected_content == 'data'

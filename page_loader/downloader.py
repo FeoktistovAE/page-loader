@@ -12,7 +12,7 @@ def to_file_name(url):
     return file_name
 
 
-def download(url, path=os.getcwd(), client=requests):
+def download(url, path, client=requests):
     response = client.get(url)
     content = response.text
     file_name = to_file_name(url)
