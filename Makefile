@@ -12,5 +12,5 @@ test-coverage:
 	poetry run pytest --cov=page_loader --cov-report xml
 selfcheck:
 	poetry check
-check: selfcheck test lint
+check: selfcheck
 setup: install build package-install

@@ -5,6 +5,8 @@ from urllib.parse import urlparse
 
 
 def rename(url, extension):
+    if extension == '':
+        extension = '.html'
     url_parts = list(urlparse(url))
     url_without_schema = url_parts[1] + url_parts[2]
     url_without_extension = os.path.splitext(url_without_schema)[0]
@@ -12,29 +14,9 @@ def rename(url, extension):
     return name + extension
 
 
-def save_image(file_path, url, path):
-    with open(file_path) as html_doc:
-        soup = BeautifulSoup(html_doc, 'html.parser')
-    image_dir_name = rename(url, '_files')
-    image_dir_path = os.path.join(path, image_dir_name)
-    os.mkdir(image_dir_path)
-    images = soup.find_all('img')
-    for i in images:
-        image_url = i['src']
-        image_extension = os.path.splitext(image_url)[1]
-        image_name = rename(image_url, image_extension)
-        image_path = os.path.join(image_dir_path, image_name)
-        response = requests.get(image_url)
-        with open(image_path, 'wb') as image_content:
-            image_content.write(response.content)
-        i['src'] = os.path.join(image_dir_name, image_name)
-    with open(file_path, 'w') as input:
-        input.write(soup.prettify())
-
-
 def download_html(url, path):
-    response = requests.get(url)
-    content = response.text
+    request = requests.get(url)
+    content = request.text
     file_name = rename(url, '.html')
     file_path = os.path.join(path, file_name)
     with open(file_path, 'w') as f:
@@ -42,7 +24,49 @@ def download_html(url, path):
     return file_path
 
 
+def save_content(
+    html_content, files_dir_path, files_dir_name, url, content_type, attribute
+):
+    url_parts = urlparse(url)
+    all_sources = html_content.find_all(content_type)
+    for i in all_sources:
+        try:
+            source = i[attribute]
+            source_parts = urlparse(source)
+            if source_parts[1] == '':
+                source_extension = os.path.splitext(source)[1]
+                source_name = rename(url_parts[1] + source, source_extension)
+                source_path = os.path.join(files_dir_path, source_name)
+                source_url = f'{url_parts[0]}://{url_parts[1]}{source}'
+                request = requests.get(source_url)
+                with open(source_path, 'wb') as content_input:
+                    content_input.write(request.content)
+                i[attribute] = os.path.join(files_dir_name, source_name)
+            elif source_parts[1] == url_parts[1]:
+                source_extension = os.path.splitext(source)[1]
+                source_without_schema = source_parts[1] + source_parts[2]
+                source_name = rename(source_without_schema, source_extension)
+                source_path = os.path.join(files_dir_path, source_name)
+                request = requests.get(source)
+                with open(source_path, 'wb') as content_input:
+                    content_input.write(request.content)
+                i[attribute] = os.path.join(files_dir_name, source_name)
+        except KeyError:
+            print('KeyError')
+        except requests.exceptions.InvalidURL:
+            print('invalidURL')
+
+
 def download(url, path):
     file_path = download_html(url, path)
-    save_image(file_path, url, path)
+    with open(file_path) as html_doc:
+        html_content = BeautifulSoup(html_doc, 'html.parser')
+    files_dir_name = rename(url, '_files')
+    files_dir_path = os.path.join(path, files_dir_name)
+    os.mkdir(files_dir_path)
+    save_content(html_content, files_dir_path, files_dir_name, url, 'img', 'src')
+    save_content(html_content, files_dir_path, files_dir_name, url, 'link', 'href')
+    save_content(html_content, files_dir_path, files_dir_name, url, 'script', 'src')
+    with open(file_path, 'w') as input:
+        input.write(html_content.prettify())
     return file_path
