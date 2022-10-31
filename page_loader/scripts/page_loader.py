@@ -3,6 +3,11 @@
 
 from page_loader import download
 from page_loader.cli import parse
+import logging
+
+
+logging.basicConfig()
+logger = logging.getLogger()
 
 
 def main():

@@ -2,6 +2,13 @@ import requests
 import os
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
+import logging
+import sys
+
+
+logging.basicConfig(level='DEBUG')
+logger = logging.getLogger()
+logging.getLogger('urllib3').setLevel('CRITICAL')
 
 
 def rename(url, extension):
@@ -15,13 +22,26 @@ def rename(url, extension):
 
 
 def download_html(url, path):
-    request = requests.get(url)
-    content = request.text
-    file_name = rename(url, '.html')
-    file_path = os.path.join(path, file_name)
-    with open(file_path, 'w') as f:
-        f.write(content)
-    return file_path
+    try:
+        request = requests.get(url)
+        content = request.text
+        file_name = rename(url, '.html')
+        file_path = os.path.join(path, file_name)
+        with open(file_path, 'w') as f:
+            f.write(content)
+        return file_path
+    except requests.exceptions.ConnectionError as e:
+        logger.debug(e)
+        sys.exit()
+    except requests.exceptions.MissingSchema as e:
+        logger.debug(e)
+        sys.exit()
+    except requests.exceptions.InvalidURL as e:
+        logger.debug(e)
+        sys.exit()
+    except OSError as e:
+        logger.debug(e)
+        sys.exit()
 
 
 def save_content(
@@ -51,10 +71,10 @@ def save_content(
                 with open(source_path, 'wb') as content_input:
                     content_input.write(request.content)
                 i[attribute] = os.path.join(files_dir_name, source_name)
-        except KeyError:
-            print('KeyError')
-        except requests.exceptions.InvalidURL:
-            print('invalidURL')
+        except KeyError as e:
+            logger.debug(e)
+        except requests.exceptions.InvalidURL as e:
+            logger.debug(e)
 
 
 def download(url, path):
