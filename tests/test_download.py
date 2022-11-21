@@ -1,8 +1,10 @@
 from page_loader.downloader import download
+from page_loader.downloader import KnownError
+import pytest
 import requests_mock
 import tempfile
 import os
-from tests import FIXTURE_PATH
+from tests import FIXTURE_PATH, FIXTURE_HTML, FIXTURE_PNG, FIXTURE_CSS, FIXTURE_JS, EXPECTED
 
 
 def get_content(path, mode='r'):
@@ -16,11 +18,11 @@ def build_path(file_name):
 
 def test_download():
     url = 'https://ru.hexlet.io/courses'
-    html_content = get_content(build_path('fixture1.html'))
-    expected_img_content = get_content(build_path('fixture_image.png'), mode='rb')
-    expected_css_content = get_content(build_path('fixture.css'), mode='rb')
-    expected_js_content = get_content(build_path('fixture.js'), mode='rb')
-    expected_content = get_content(build_path('expected1.html'))
+    html_content = get_content(build_path(FIXTURE_HTML))
+    expected_img_content = get_content(build_path(FIXTURE_PNG), mode='rb')
+    expected_css_content = get_content(build_path(FIXTURE_CSS), mode='rb')
+    expected_js_content = get_content(build_path(FIXTURE_JS), mode='rb')
+    expected_content = get_content(build_path(EXPECTED))
     with tempfile.TemporaryDirectory() as tempdir:
         with requests_mock.Mocker() as mock:
             mock.get(url, text=html_content)
@@ -62,3 +64,20 @@ def test_download():
     assert expected_html_path == result_path
     assert result_content == expected_content
     assert expected_html_content == html_content
+
+
+def test_exceptions():
+    url = 'https://ru.hexlet.io/courses'
+    with requests_mock.Mocker() as mock:
+        with tempfile.TemporaryDirectory() as tempdir:
+            with pytest.raises(KnownError):
+                mock.get(url, status_code=404)
+                download(url, tempdir)
+
+
+def test_unknown_dir():
+    url = 'https://ru.hexlet.io/courses'
+    with requests_mock.Mocker() as mock:
+        with pytest.raises(KnownError):
+            mock.get(url)
+            download(url, 'wrong/path/directory')

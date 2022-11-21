@@ -3,12 +3,15 @@ import os
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 import logging
-import sys
 
 
 logging.basicConfig(level='DEBUG')
 logger = logging.getLogger()
 logging.getLogger('urllib3').setLevel('CRITICAL')
+
+
+class KnownError(Exception):
+    pass
 
 
 def rename(url, extension):
@@ -24,6 +27,9 @@ def rename(url, extension):
 def download_html(url, path):
     try:
         request = requests.get(url)
+        if request.status_code > 200:
+            logger.error(f'Код ответа {request.status_code}')
+            raise KnownError
         content = request.text
         file_name = rename(url, '.html')
         file_path = os.path.join(path, file_name)
@@ -32,16 +38,20 @@ def download_html(url, path):
         return file_path
     except requests.exceptions.ConnectionError as e:
         logger.debug(e)
-        sys.exit()
+        logger.error('Не удалось загрузить страницу')
+        raise KnownError from e
     except requests.exceptions.MissingSchema as e:
         logger.debug(e)
-        sys.exit()
+        logger.error(f'Отсутсвует схема в набранном URL, возможно вы имели в виду http://{url}?')
+        raise KnownError from e
     except requests.exceptions.InvalidURL as e:
         logger.debug(e)
-        sys.exit()
+        logger.error('Такого URL не существет')
+        raise KnownError from e
     except OSError as e:
         logger.debug(e)
-        sys.exit()
+        logger.error(f'Директории "{path}" не существует, либо к ней ограничен доступ')
+        raise KnownError from e
 
 
 def save_content(
