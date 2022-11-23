@@ -3,11 +3,15 @@ import os
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 import logging
+from progress.bar import IncrementalBar
 
 
-logging.basicConfig(level='DEBUG')
+logging.basicConfig(level='ERROR')
 logger = logging.getLogger()
 logging.getLogger('urllib3').setLevel('CRITICAL')
+
+
+HTML_ELEMENTS = (('img', 'src'), ('link', 'href'), ('script', 'src'))
 
 
 class KnownError(Exception):
@@ -63,8 +67,8 @@ def save_content(
         try:
             source = i[attribute]
             source_parts = urlparse(source)
+            source_extension = os.path.splitext(source)[1]
             if source_parts[1] == '':
-                source_extension = os.path.splitext(source)[1]
                 source_name = rename(url_parts[1] + source, source_extension)
                 source_path = os.path.join(files_dir_path, source_name)
                 source_url = f'{url_parts[0]}://{url_parts[1]}{source}'
@@ -73,7 +77,6 @@ def save_content(
                     content_input.write(request.content)
                 i[attribute] = os.path.join(files_dir_name, source_name)
             elif source_parts[1] == url_parts[1]:
-                source_extension = os.path.splitext(source)[1]
                 source_without_schema = source_parts[1] + source_parts[2]
                 source_name = rename(source_without_schema, source_extension)
                 source_path = os.path.join(files_dir_path, source_name)
@@ -88,15 +91,18 @@ def save_content(
 
 
 def download(url, path):
+    bar = IncrementalBar('Downloading:', max=4, suffix="%(percent).1f%%  (eta: %(eta)d)")
+    bar.next()
     file_path = download_html(url, path)
     with open(file_path) as html_doc:
         html_content = BeautifulSoup(html_doc, 'html.parser')
     files_dir_name = rename(url, '_files')
     files_dir_path = os.path.join(path, files_dir_name)
     os.mkdir(files_dir_path)
-    save_content(html_content, files_dir_path, files_dir_name, url, 'img', 'src')
-    save_content(html_content, files_dir_path, files_dir_name, url, 'link', 'href')
-    save_content(html_content, files_dir_path, files_dir_name, url, 'script', 'src')
+    for tag, attribute in HTML_ELEMENTS:
+        save_content(html_content, files_dir_path, files_dir_name, url, tag, attribute)
+        bar.next()
     with open(file_path, 'w') as input:
         input.write(html_content.prettify())
+    bar.finish()
     return file_path

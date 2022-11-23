@@ -4,7 +4,7 @@ import pytest
 import requests_mock
 import tempfile
 import os
-from tests import FIXTURE_PATH, FIXTURE_HTML, FIXTURE_PNG, FIXTURE_CSS, FIXTURE_JS, EXPECTED
+from tests import FIXTURE_PATH, FIXTURE_HTML, FIXTURE_PNG, FIXTURE_CSS, FIXTURE_JS, EXPECTED, URL
 
 
 def get_content(path, mode='r'):
@@ -16,8 +16,11 @@ def build_path(file_name):
     return os.path.join(FIXTURE_PATH, file_name)
 
 
+def to_local_path(local_name):
+    return 'ru-hexlet-io-courses_files/ru-hexlet-io-' + local_name
+
+
 def test_download():
-    url = 'https://ru.hexlet.io/courses'
     html_content = get_content(build_path(FIXTURE_HTML))
     expected_img_content = get_content(build_path(FIXTURE_PNG), mode='rb')
     expected_css_content = get_content(build_path(FIXTURE_CSS), mode='rb')
@@ -25,7 +28,7 @@ def test_download():
     expected_content = get_content(build_path(EXPECTED))
     with tempfile.TemporaryDirectory() as tempdir:
         with requests_mock.Mocker() as mock:
-            mock.get(url, text=html_content)
+            mock.get(URL, text=html_content)
             mock.get(
                 'https://ru.hexlet.io/assets/application.css', content=expected_css_content
             )
@@ -51,7 +54,7 @@ def test_download():
             html_path = os.path.join(
                 tempdir, 'ru-hexlet-io-courses_files/ru-hexlet-io-courses.html'
             )
-            result_path = download(url, tempdir)
+            result_path = download(URL, tempdir)
             print(os.listdir(os.path.join(tempdir, 'ru-hexlet-io-courses_files')))
             result_content = get_content(result_path)
             image_content = get_content(image_path, mode='rb')
