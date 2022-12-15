@@ -23,6 +23,7 @@ def rename(url, extension):
     name = url_without_extension.replace('.', '-').replace('/', '-')
     return name + extension
 
+
 def get_html_and_resources(url, outdir):
     resources = {}
     try:
@@ -87,7 +88,6 @@ def download_resources(resources, url, path):
             logging.debug(e)
         bar.next()
     bar.finish()
-
 
 
 def download(url, path):
