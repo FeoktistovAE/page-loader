@@ -1,21 +1,17 @@
 import requests
 import os
 from bs4 import BeautifulSoup
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 import logging
 from progress.bar import IncrementalBar
+from page_loader.known_error import KnownError
 
 
-logging.basicConfig(level='ERROR')
-logger = logging.getLogger()
-logging.getLogger('urllib3').setLevel('CRITICAL')
-
-
-HTML_ELEMENTS = (('img', 'src'), ('link', 'href'), ('script', 'src'))
-
-
-class KnownError(Exception):
-    pass
+HTML_TAGS = (
+    ('img', 'src'),
+    ('link', 'href'),
+    ('script', 'src')
+)
 
 
 def rename(url, extension):
@@ -27,82 +23,79 @@ def rename(url, extension):
     name = url_without_extension.replace('.', '-').replace('/', '-')
     return name + extension
 
-
-def download_html(url, path):
+def get_html_and_resources(url, outdir):
+    resources = {}
     try:
         request = requests.get(url)
         if request.status_code > 200:
-            logger.error(f'Код ответа {request.status_code}')
+            logging.error(f'Код ответа {request.status_code}')
             raise KnownError
-        content = request.text
-        file_name = rename(url, '.html')
-        file_path = os.path.join(path, file_name)
-        with open(file_path, 'w') as f:
-            f.write(content)
-        return file_path
+        html_content = BeautifulSoup(request.text, 'html.parser')
+        url_parts = urlparse(url)
+        for tag, attribute in HTML_TAGS:
+            elements = html_content.find_all(tag)
+            for element in elements:
+                resource = element[attribute]
+                resource_parts = urlparse(resource)
+                resource_extension = os.path.splitext(resource)[1]
+                if resource[0] == '/':
+                    resource_name = rename(url_parts[1] + resource, resource_extension)
+                    resource_path = os.path.join(outdir, resource_name)
+                    resource_url = urljoin(url, resource)
+                    resources[resource_url] = resource_path
+                    element[attribute] = os.path.join(outdir, resource_name)
+                elif url_parts[1] == resource_parts[1]:
+                    resource_without_schema = resource_parts[1] + resource_parts[2]
+                    resource_name = rename(resource_without_schema, resource_extension)
+                    resource_path = os.path.join(outdir, resource_name)
+                    resources[resource] = resource_path
+                    element[attribute] = os.path.join(outdir, resource_name)
+    except KeyError as e:
+        logging.debug(e)
+    except requests.exceptions.InvalidURL as e:
+        logging.debug(e)
     except requests.exceptions.ConnectionError as e:
-        logger.debug(e)
-        logger.error('Не удалось загрузить страницу')
+        logging.debug(e)
+        logging.error('Не удалось загрузить страницу')
         raise KnownError from e
     except requests.exceptions.MissingSchema as e:
-        logger.debug(e)
-        logger.error(f'Отсутсвует схема в набранном URL, возможно вы имели в виду http://{url}?')
+        logging.debug(e)
+        logging.error(f'Отсутсвует схема в набранном URL, возможно вы имели в виду http://{url}?')
         raise KnownError from e
-    except requests.exceptions.InvalidURL as e:
-        logger.debug(e)
-        logger.error('Такого URL не существет')
-        raise KnownError from e
+    return html_content.prettify(), resources
+
+
+def download_resources(resources, url, path):
+    bar = IncrementalBar('Downloading:', max=4, suffix="%(percent).1f%%  (eta: %(eta)d)")
+    files_dir_name = rename(url, '_files')
+    files_dir_path = os.path.join(path, files_dir_name)
+    try:
+        os.mkdir(files_dir_path)
     except OSError as e:
-        logger.debug(e)
-        logger.error(f'Директории "{path}" не существует, либо к ней ограничен доступ')
+        logging.debug(e)
+        logging.error(f'Директории "{path}" не существует, либо к ней ограничен доступ')
         raise KnownError from e
-
-
-def save_content(
-    html_content, files_dir_path, files_dir_name, url, content_type, attribute
-):
-    url_parts = urlparse(url)
-    all_sources = html_content.find_all(content_type)
-    for i in all_sources:
+    for resource_url, resource_path in resources.items():
+        file_path = os.path.join(path, resource_path)
         try:
-            source = i[attribute]
-            source_parts = urlparse(source)
-            source_extension = os.path.splitext(source)[1]
-            if source_parts[1] == '':
-                source_name = rename(url_parts[1] + source, source_extension)
-                source_path = os.path.join(files_dir_path, source_name)
-                source_url = f'{url_parts[0]}://{url_parts[1]}{source}'
-                request = requests.get(source_url)
-                with open(source_path, 'wb') as content_input:
-                    content_input.write(request.content)
-                i[attribute] = os.path.join(files_dir_name, source_name)
-            elif source_parts[1] == url_parts[1]:
-                source_without_schema = source_parts[1] + source_parts[2]
-                source_name = rename(source_without_schema, source_extension)
-                source_path = os.path.join(files_dir_path, source_name)
-                request = requests.get(source)
-                with open(source_path, 'wb') as content_input:
-                    content_input.write(request.content)
-                i[attribute] = os.path.join(files_dir_name, source_name)
+            request = requests.get(resource_url)
+            with open(file_path, 'wb') as content_input:
+                content_input.write(request.content)
         except KeyError as e:
-            logger.debug(e)
+            logging.debug(e)
         except requests.exceptions.InvalidURL as e:
-            logger.debug(e)
+            logging.debug(e)
+        bar.next()
+    bar.finish()
+
 
 
 def download(url, path):
-    bar = IncrementalBar('Downloading:', max=4, suffix="%(percent).1f%%  (eta: %(eta)d)")
-    bar.next()
-    file_path = download_html(url, path)
-    with open(file_path) as html_doc:
-        html_content = BeautifulSoup(html_doc, 'html.parser')
-    files_dir_name = rename(url, '_files')
-    files_dir_path = os.path.join(path, files_dir_name)
-    os.mkdir(files_dir_path)
-    for tag, attribute in HTML_ELEMENTS:
-        save_content(html_content, files_dir_path, files_dir_name, url, tag, attribute)
-        bar.next()
-    with open(file_path, 'w') as input:
-        input.write(html_content.prettify())
-    bar.finish()
-    return file_path
+    outdir = rename(url, '_files')
+    html_content, resources = get_html_and_resources(url, outdir)
+    download_resources(resources, url, path)
+    html_name = rename(url, '.html')
+    html_path = os.path.join(path, html_name)
+    with open(html_path, 'w') as input:
+        input.write(html_content)
+    return html_path

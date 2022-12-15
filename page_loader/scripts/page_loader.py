@@ -3,7 +3,7 @@
 
 from page_loader import download
 from page_loader.cli import parse
-from page_loader.downloader import KnownError
+from page_loader.known_error import KnownError
 import logging
 import sys
 
@@ -18,6 +18,7 @@ def main():
         print(download(args.url, path=args.output))
         sys.exit(0)
     except KnownError:
+        logger.error('Загрузка остановлена')
         sys.exit(1)
 
 

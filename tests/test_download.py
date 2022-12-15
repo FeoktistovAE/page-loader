@@ -1,5 +1,5 @@
 from page_loader.downloader import download
-from page_loader.downloader import KnownError
+from page_loader.known_error import KnownError
 import pytest
 import requests_mock
 import tempfile
@@ -78,7 +78,7 @@ def test_exceptions():
                 download(url, tempdir)
 
 
-def test_unknown_dir():
+def test_wrong_path_dir():
     url = 'https://ru.hexlet.io/courses'
     with requests_mock.Mocker() as mock:
         with pytest.raises(KnownError):
