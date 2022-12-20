@@ -10,5 +10,4 @@ def parse():
     parser.add_argument(
         '-o', '--output', type=str, default=os.getcwd()
     )
-    args = parser.parse_args()
-    return args
+    return parser.parse_args()
