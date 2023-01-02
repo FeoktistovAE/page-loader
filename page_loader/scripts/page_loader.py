@@ -5,7 +5,6 @@ from page_loader import download
 from page_loader.cli import parse
 import logging
 import sys
-import requests
 
 
 logging.basicConfig()
@@ -20,6 +19,7 @@ def main():
     except Exception as ex:
         logger.error(ex)
         sys.exit(1)
+
 
 if __name__ == '__main__':
     main()

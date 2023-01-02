@@ -55,7 +55,7 @@ def download_resource(path, resource_path, resource_url):
 
 def download_resources(resources, path, outdir):
     if not resources:
-        logging.debug(f'Нет ресурсов для скачивания')
+        logging.debug('Нет ресурсов для скачивания')
         return
     bar = IncrementalBar('Downloading:', max=4, suffix="%(percent).1f%%  (eta: %(eta)d)")
     files_dir_path = os.path.join(path, outdir)
