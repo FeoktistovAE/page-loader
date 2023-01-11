@@ -20,4 +20,5 @@ page-loader -h
 ```bash
 usage: page-loader [-h] [-o OUTPUT] url
 ```
-[![asciicast](https://asciinema.org/a/d5kxDb8dg5Qd3IbJSxQQm26BZ.svg)](https://asciinema.org/a/d5kxDb8dg5Qd3IbJSxQQm26BZ) - download example
+Downloading example
+[![asciicast](https://asciinema.org/a/d5kxDb8dg5Qd3IbJSxQQm26BZ.svg)](https://asciinema.org/a/d5kxDb8dg5Qd3IbJSxQQm26BZ) -
