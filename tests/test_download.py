@@ -36,8 +36,8 @@ MEDIA_ASSETS = (
 )
 
 
-def get_content(path, mode='r'):
-    with open(path, mode) as output:
+def get_content(path):
+    with open(path, 'rb') as output:
         return output.read()
 
 
@@ -47,7 +47,7 @@ def build_path(file_name):
 
 def test_download(requests_mock, tmpdir):
     for url, file, _ in MEDIA_ASSETS:
-        file_content = get_content(build_path(file), mode='rb')
+        file_content = get_content(build_path(file))
         requests_mock.get(url, content=file_content)
 
     result_path = download(URL, tmpdir)
@@ -55,9 +55,9 @@ def test_download(requests_mock, tmpdir):
     assert result_path == expected_path
 
     for _, file, path in MEDIA_ASSETS:
-        expected_content = get_content(build_path(file), mode='rb')
+        expected_content = get_content(build_path(file))
         file_path = os.path.join(tmpdir, path)
-        result_content = get_content(file_path, mode='rb')
+        result_content = get_content(file_path)
         assert expected_content == result_content
 
 
