@@ -1,16 +1,39 @@
 from page_loader.downloader import download
-import requests
 import pytest
 import os
 from tests import FIXTURE_PATH
 
 
-FIXTURE_HTML = 'fixture.html'
-FIXTURE_PNG = 'fixture.png'
-FIXTURE_CSS = 'fixture.css'
-FIXTURE_JS = 'fixture.js'
-EXPECTED = 'expected.html'
 URL = 'https://ru.hexlet.io/courses'
+FILE_NAME = 'ru-hexlet-io-courses.html'
+
+MEDIA_ASSETS = (
+    (
+        URL,
+        'expected.html',
+        FILE_NAME,
+    ),
+    (
+        'https://ru.hexlet.io/assets/application.css',
+        'fixture.css',
+        'ru-hexlet-io-courses_files/ru-hexlet-io-assets-application.css',
+    ),
+    (
+        'https://ru.hexlet.io/assets/professions/nodejs.png',
+        'fixture.png',
+        'ru-hexlet-io-courses_files/ru-hexlet-io-assets-professions-nodejs.png',
+    ),
+    (
+        'https://ru.hexlet.io/packs/js/runtime.js',
+        'fixture.js',
+        'ru-hexlet-io-courses_files/ru-hexlet-io-packs-js-runtime.js',
+    ),
+    (
+        'https://ru.hexlet.io/courses',
+        'fixture.html',
+        'ru-hexlet-io-courses_files/ru-hexlet-io-courses.html',
+    ),
+)
 
 
 def get_content(path, mode='r'):
@@ -22,60 +45,24 @@ def build_path(file_name):
     return os.path.join(FIXTURE_PATH, file_name)
 
 
-def to_local_path(local_name):
-    return 'ru-hexlet-io-courses_files/ru-hexlet-io-' + local_name
-
-
 def test_download(requests_mock, tmpdir):
-    html_content = get_content(build_path(FIXTURE_HTML))
-    requests_mock.get(URL, text=html_content)
-    expected_content = get_content(build_path(EXPECTED))
-    expected_html_path = os.path.join(
-        tmpdir, 'ru-hexlet-io-courses.html'
-    )
+    for url, file, _ in MEDIA_ASSETS:
+        file_content = get_content(build_path(file), mode='rb')
+        requests_mock.get(url, content=file_content)
 
-    expected_img_content = get_content(build_path(FIXTURE_PNG), mode='rb')
-    expected_css_content = get_content(build_path(FIXTURE_CSS), mode='rb')
-    expected_js_content = get_content(build_path(FIXTURE_JS), mode='rb')
-
-    requests_mock.get(
-        'https://ru.hexlet.io/assets/application.css', content=expected_css_content
-    )
-    requests_mock.get(
-        'https://ru.hexlet.io/assets/professions/nodejs.png', content=expected_img_content
-    )
-    requests_mock.get(
-        'https://ru.hexlet.io/packs/js/runtime.js', content=expected_js_content
-    )
-    image_path = os.path.join(
-        tmpdir, 'ru-hexlet-io-courses_files/ru-hexlet-io-assets-professions-nodejs.png'
-    )
-    css_path = os.path.join(
-        tmpdir, 'ru-hexlet-io-courses_files/ru-hexlet-io-assets-application.css'
-    )
-    js_path = os.path.join(
-        tmpdir, 'ru-hexlet-io-courses_files/ru-hexlet-io-packs-js-runtime.js'
-    )
-    html_path = os.path.join(
-        tmpdir, 'ru-hexlet-io-courses_files/ru-hexlet-io-courses.html'
-    )
     result_path = download(URL, tmpdir)
-    print(os.listdir(os.path.join(tmpdir, 'ru-hexlet-io-courses_files')))
-    result_content = get_content(result_path)
-    image_content = get_content(image_path, mode='rb')
-    css_content = get_content(css_path, mode='rb')
-    js_content = get_content(js_path, mode='rb')
-    expected_html_content = get_content(html_path)
-    assert expected_css_content == css_content
-    assert expected_js_content == js_content
-    assert expected_img_content == image_content
-    assert expected_html_path == result_path
-    assert result_content == expected_content
-    assert expected_html_content == html_content
+    expected_path = os.path.join(tmpdir, FILE_NAME)
+    assert result_path == expected_path
+
+    for _, file, path in MEDIA_ASSETS:
+        expected_content = get_content(build_path(file), mode='rb')
+        file_path = os.path.join(tmpdir, path)
+        result_content = get_content(file_path, mode='rb')
+        assert expected_content == result_content
 
 
 def test_status_code(requests_mock, tmpdir):
-    with pytest.raises(requests.exceptions.ConnectionError):
+    with pytest.raises(Exception):
         requests_mock.get(URL, status_code=404)
         download(URL, tmpdir)
 

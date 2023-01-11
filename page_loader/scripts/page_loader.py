@@ -7,11 +7,11 @@ import logging
 import sys
 
 
-logging.basicConfig()
-logger = logging.getLogger()
-
-
 def main():
+
+    logging.basicConfig()
+    logger = logging.getLogger()
+
     try:
         args = parse()
         print(download(args.url, path=args.output))
